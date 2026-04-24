@@ -7,13 +7,16 @@ No third-party packages are required.
 ## Features
 
 - Load one or more log or text files into a single editor view
+- Use staged progress feedback during file loading and regex processing
 - Paste or edit text directly
 - Run standard Python regex searches with `IGNORECASE`, `MULTILINE`, `DOTALL`, and `VERBOSE`
 - Use `NOT Matching Lines` mode to return lines that do not match a regex
 - Use `Multi Filter Pipeline` mode to chain multiple line filters
 - Prefix pipeline steps with `NOT:` to exclude matching lines at any stage
 - Page through large result sets with `Max Matches Per Page`
+- Apply `Max Matches Per Page` to the current result set without rerunning the scan
 - Keep the full loaded text visible or switch to a reduced page-focused text view
+- Defer full raw-text rendering for very large files to keep the UI responsive
 - Navigate regex results with next/previous match controls
 - Highlight keyword/severity lines such as `ERROR`, `WARN`, `CRITICAL`, and custom keywords
 - Jump quickly to the next error-like or warning-like line
@@ -92,6 +95,16 @@ The left pane can work in two ways:
 - `Show Full Loaded Text` enabled: keeps the entire loaded text visible, including matched and unmatched lines
 - `Show Full Loaded Text` disabled: shows a reduced text span around the current result page to lower UI load
 
+For very large files, the application may keep the full source in memory but show a safe placeholder instead of rendering the entire raw log into the editor. Regex scans, pipeline scans, result paging, and export still operate on the full loaded source text.
+
+## Progress And Large Files
+
+- File loading and regex processing run in background threads
+- The inline progress bar shows the current stage and detail text
+- Longer operations can open a progress popup with staged status and a running progress log
+- Very large files avoid full editor rendering on load to reduce freezes and allocator pressure
+- Navigation features continue to use the real loaded source, but when a line cannot be shown safely in the editor, the app falls back to popup-based inspection
+
 ## Highlights And Navigation
 
 The `Highlight keywords` field lets you define comma-separated words to color in the visible text. The default value is:
@@ -106,6 +119,8 @@ You can then use:
 - `Next Warn`
 - bookmarks for important lines
 
+When a very large file is loaded in deferred full-text mode, keyword and bookmark navigation still resolve against the real source text. If the target line cannot be rendered safely in the editor, the exact source line is shown in the inspector popup instead.
+
 ## Bookmarks
 
 Bookmarks are stored in memory for the current session.
@@ -116,6 +131,11 @@ You can:
 - add an optional comment
 - list bookmarks in a popup
 - jump to bookmarked lines quickly
+
+Notes:
+
+- Bookmarks are line-based and session-only
+- In deferred large-file mode, bookmarks can still be opened from the bookmark list even when the full raw source is not rendered into the editor
 
 ## Results And Export
 
@@ -130,6 +150,7 @@ Notes:
 - Replacement preview is disabled in `NOT Matching Lines` mode
 - Replacement preview is disabled in `Multi Filter Pipeline` mode
 - Export includes the full result set from the whole loaded source text, not just the current page
+- `Matches` shows matched values for the current page, while the left text pane shows the matched log lines for the current page
 
 ## Keyboard Shortcuts
 
@@ -152,6 +173,7 @@ Notes:
 - This tool uses Python's built-in `re` module
 - Multi-file loading combines files into one text buffer with separator headers
 - Files are read as UTF-8 with replacement for undecodable bytes
+- Large-file loading is streamed into a single decoded text buffer to avoid extra temporary copies during load
 - Pagination limits UI rendering, while export still works on the complete result set
 - Bookmarks are not persisted across application restarts
 
